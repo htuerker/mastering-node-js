@@ -18,9 +18,9 @@ handlers.notFound = function(data, callback) {
 };
 
 handlers.users = function(data, callback) {
-    const acceptableMethods = ['_', 'get', 'post', 'put', 'delete'];
+    const acceptableMethods = ['get', 'post', 'put', 'delete'];
 
-    if(acceptableMethods.indexOf(data.method)) {
+    if(acceptableMethods.indexOf(data.method) > - 1) {
         handlers._users[data.method](data, callback);
     } else {
         // HTTP Method not Allowed
@@ -161,5 +161,71 @@ handlers._users.delete = function(data, callback) {
         callback(400, { 'Error' : 'Missing required field' });
     }
 };
+
+handlers.tokens = function(data, callback) {
+    const acceptableMethods = ['get', 'post', 'put', 'delete'];
+
+    if(acceptableMethods.indexOf(data.method) > - 1) {
+        handlers._tokens[data.method](data, callback);
+    } else {
+        // HTTP Method not Allowed
+        callback(405);
+    }
+};
+
+handlers._tokens = {};
+
+handlers._tokens.get = function(data, callback) {
+
+}
+
+// Required data: phone, password
+// Optional data: none
+handlers._tokens.post = function(data, callback) {
+    const phone = typeof(data.payload.phone) == 'string' && 
+    data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
+
+    const password = typeof(data.payload.password) == 'string' && 
+    data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
+
+    if(phone && password) {
+        // Look up the user who matches that phone number
+        _data.read('users', phone, function(err, userData) {
+            if(!err && userData) {
+                const hashedPassword = helpers.hash(password);
+                if(hashedPassword == userData.hashedPassword) {
+                    const tokenId = helpers.createRandomString(20);
+                    const expires = Date.now() + 1000 * 60 * 60;
+                    const tokenObject = {
+                        'phone': phone,
+                        'id' : tokenId,
+                        'expires': expires,
+                    }
+                    _data.create('tokens', tokenId, tokenObject, function(err) {
+                        if(!err) {
+                            callback(200, tokenObject);
+                        } else {
+                            callback(500, { 'Error': 'Could not create the new token' });
+                        }
+                    });
+                } else {
+                    callback(400, { 'Error': 'Password did not match the specified user\'s stored password' })
+                }
+            } else {
+                callback(400, { 'Error' : 'Could not find the specified user'});
+            }
+        });
+    } else {
+        callback(400, { 'Error' : 'Missing required fields' });
+    }
+}
+
+handlers._tokens.put = function(data, callback) {
+    
+}
+
+handlers._tokens.delete = function(data, callback) {
+    
+}
 
 module.exports = handlers;

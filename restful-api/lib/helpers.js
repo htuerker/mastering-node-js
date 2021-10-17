@@ -19,6 +19,22 @@ helpers.hash = function(str) {
     }
 }
 
+helpers.createRandomString = function(length) {
+    length = typeof(length) == 'number' && length > 0 ? length : false;
+    
+    if(length) {
+        const possibleCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let str = '';
+        for(let i = 0; i < length; i++) {
+            const randomChar = possibleCharacters.charAt(Math.floor(Math.random() * possibleCharacters.length));
+            str += randomChar;
+        }
+        return str;
+    } else {
+        return false;
+    }
+};
+
 helpers.parseJsonToObject = function(str) {
     try {
         const obj = JSON.parse(str);
