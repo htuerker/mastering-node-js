@@ -99,7 +99,45 @@ handlers._users.post = function(data, callback) {
 };
 
 handlers._users.put = function(data, callback) {
-    
+    const firstName = typeof(data.payload.firstName) == 'string' && 
+        data.payload.firstName.trim().length > 0 ? data.payload.firstName.trim() : false;
+
+    const lastName = typeof(data.payload.lastName) == 'string' && 
+        data.payload.lastName.trim().length > 0 ? data.payload.lastName.trim() : false;
+
+    const phone = typeof(data.payload.phone) == 'string' && 
+        data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
+
+    const password = typeof(data.payload.password) == 'string' && 
+        data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
+
+    if(phone) {
+        if(firstName || lastName || password) {
+            // look up the user
+            _data.read('users', phone, function(err, userData) {
+                if(!err && userData) {
+                    if(firstName) userData.firstName = firstName;
+                    if(lastName)  userData.lastName = lastName;
+                    if(password)  userData.hashedPassword = helpers.hash(password);
+                    
+                    _data.update('users', phone, userData, function(err) {
+                        if(!err) {
+                            callback(200);
+                        } else {
+                            console.log(err);
+                            callback(500, { 'Error': 'Could not update the user' });
+                        }
+                    });
+                } else {
+                    callback(400, { 'Error': 'The specified user does not exist' });
+                }
+            });
+        } else {
+            callback(400, { 'Error': 'Missing fields to update' });
+        }
+    } else {
+        callback(400, { 'Error' : 'Missing required field' });
+    }
 };
 
 handlers._users.delete = function(data, callback) {

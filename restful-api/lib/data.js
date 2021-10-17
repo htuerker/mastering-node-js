@@ -5,6 +5,7 @@
 *
 */
 
+// eslint-disable-next-line node/no-unsupported-features/node-builtins
 const fs = require('fs');
 const path = require('path');
 
@@ -19,10 +20,15 @@ lib.read = function(dir, file, callback) {
             if(!err && data) {
                 const parsedData = helpers.parseJsonToObject(data);
                 callback(false, parsedData);
+            } else {
+                callback(err, data);
             }
-            callback(err, data);
-        }
-    );
+    });
+
+    // TODO refactor using fs.promises
+    // fs.readFile(lib.baseDir + dir + '/' + file + '.json', 'utf-8')
+    //     .then(data => callback(false, helpers.parseJsonToObject(data)))
+    //     .catch(err => callback(err));
 };
 
 lib.create = function(dir, file, data, callback) {
@@ -49,7 +55,6 @@ lib.create = function(dir, file, data, callback) {
         }
     );
 };
-
 
 lib.update = function(dir, file, data, callback) {
     fs.open(lib.baseDir + dir + '/' + file + '.json', 'r+', 

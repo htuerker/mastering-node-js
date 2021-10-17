@@ -36,6 +36,7 @@ httpsServer.listen(config.httpsPort, function() {
 })
 
 const unifiedServer = function(req, res) {
+    // eslint-disable-next-line node/no-deprecated-api
     const parsedUrl = url.parse(req.url, true);
     const path = parsedUrl.pathname;
     const trimmedPath = path.replace(/^\/+|\/$/g, '');
