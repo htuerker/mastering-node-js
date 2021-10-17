@@ -1,87 +1,101 @@
-/*  
-* Primay file for the API
-*/
+/*
+ * Primay file for the API
+ */
 
-const http = require('http');
-const https = require('https');
-const url = require('url');
-const fs = require('fs');
-const StringDecoder = require('string_decoder').StringDecoder;
+const http = require("http");
+const https = require("https");
+const url = require("url");
+const fs = require("fs");
+const StringDecoder = require("string_decoder").StringDecoder;
 
-const config = require('./lib/config');
-const handlers = require('./lib/handlers');
-const helpers = require('./lib/helpers');
+const config = require("./lib/config");
+const handlers = require("./lib/handlers");
+const helpers = require("./lib/helpers");
 
 // Instantiate the HTTP server
-const httpServer = http.createServer(function(req, res) {
-    unifiedServer(req, res);
+const httpServer = http.createServer(function (req, res) {
+  unifiedServer(req, res);
 });
 
 // Start the HTTP server
-httpServer.listen(config.httpPort, function() {
-    console.log('The HTTP server is listening on port: ', config.httpPort, ' in ', config.envName, ' mode.');
+httpServer.listen(config.httpPort, function () {
+  console.log(
+    "The HTTP server is listening on port: ",
+    config.httpPort,
+    " in ",
+    config.envName,
+    " mode."
+  );
 });
 
 // Instantiate the HTTPS server
 const httpsServerOptions = {
-    'key': fs.readFileSync('./https/key.pem'),
-    'cert': fs.readFileSync('./https/cert.pem'),
+  key: fs.readFileSync("./https/key.pem"),
+  cert: fs.readFileSync("./https/cert.pem"),
 };
-const httpsServer = https.createServer(httpsServerOptions, function(req, res) {
-    unifiedServer(req, res);
-})
+const httpsServer = https.createServer(httpsServerOptions, function (req, res) {
+  unifiedServer(req, res);
+});
 // Start the HTTPS server
-httpsServer.listen(config.httpsPort, function() {
-    console.log('The HTTPS server is listening on port: ', config.httpsPort, ' in ', config.envName, ' mode.');
-})
+httpsServer.listen(config.httpsPort, function () {
+  console.log(
+    "The HTTPS server is listening on port: ",
+    config.httpsPort,
+    " in ",
+    config.envName,
+    " mode."
+  );
+});
 
-const unifiedServer = function(req, res) {
-    // eslint-disable-next-line node/no-deprecated-api
-    const parsedUrl = url.parse(req.url, true);
-    const path = parsedUrl.pathname;
-    const trimmedPath = path.replace(/^\/+|\/$/g, '');
-    
-    const method = req.method.toLocaleLowerCase();
-    const queryStringObject = parsedUrl.query;
+const unifiedServer = function (req, res) {
+  // eslint-disable-next-line node/no-deprecated-api
+  const parsedUrl = url.parse(req.url, true);
+  const path = parsedUrl.pathname;
+  const trimmedPath = path.replace(/^\/+|\/$/g, "");
 
-    const headers = req.headers;
+  const method = req.method.toLocaleLowerCase();
+  const queryStringObject = parsedUrl.query;
 
-    const decoder = new StringDecoder('utf-8');
-    let buffer = '';
+  const headers = req.headers;
 
-    req.on('data', function(data) {
-        buffer += decoder.write(data);
+  const decoder = new StringDecoder("utf-8");
+  let buffer = "";
+
+  req.on("data", function (data) {
+    buffer += decoder.write(data);
+  });
+
+  req.on("end", function () {
+    buffer += decoder.end();
+
+    const chosenHandler =
+      typeof router[trimmedPath] !== "undefined"
+        ? router[trimmedPath]
+        : handlers.notFound;
+
+    const data = {
+      trimmedPath,
+      method,
+      queryStringObject,
+      headers,
+      payload: helpers.parseJsonToObject(buffer),
+    };
+
+    chosenHandler(data, function (statusCode, payload) {
+      statusCode = typeof statusCode == "number" ? statusCode : 200;
+      payload = typeof payload == "object" ? payload : {};
+      const payloadString = JSON.stringify(payload);
+
+      res.setHeader("Content-Type", "application/json");
+      res.writeHead(statusCode);
+      res.end(payloadString);
+      console.log("Returning this response", statusCode, payloadString);
     });
-
-    req.on('end', function() {
-        buffer += decoder.end();
-
-        const chosenHandler = typeof(router[trimmedPath]) !== 'undefined' 
-            ? router[trimmedPath] : handlers.notFound;
-
-        const data = { 
-            trimmedPath, 
-            method, 
-            queryStringObject, 
-            headers, 
-            payload: helpers.parseJsonToObject(buffer)
-        };
-
-        chosenHandler(data, function(statusCode, payload) {
-            statusCode = typeof(statusCode) == 'number' ? statusCode : 200;
-            payload = typeof(payload) == 'object' ? payload : {};
-            const payloadString = JSON.stringify(payload);
-            
-            res.setHeader('Content-Type', 'application/json');
-            res.writeHead(statusCode);
-            res.end(payloadString);
-            console.log('Returning this response', statusCode, payloadString);
-        });
-    });
-}
+  });
+};
 
 const router = {
-    'ping': handlers.ping,
-    'users' : handlers.users,
-    'tokens': handlers.tokens,
+  ping: handlers.ping,
+  users: handlers.users,
+  tokens: handlers.tokens,
 };

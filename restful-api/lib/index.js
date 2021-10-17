@@ -1,4 +1,4 @@
-const lib = require('./data');
+const lib = require("./data");
 
 // lib.read('test', 'newFile', function(err, data) {
 //     if(!err) {
@@ -24,10 +24,10 @@ const lib = require('./data');
 //     }
 // });
 
-lib.delete('test', 'newFile', function(err) {
-    if(!err) {
-        console.log('Success');
-    } else {
-        console.log('Failure!');
-    }
+lib.delete("test", "newFile", function (err) {
+  if (!err) {
+    console.log("Success");
+  } else {
+    console.log("Failure!");
+  }
 });
