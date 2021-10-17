@@ -19,7 +19,8 @@ handlers.notFound = function(data, callback) {
 };
 
 handlers.users = function(data, callback) {
-    const acceptableMethods = ['get', 'post', 'put', 'delete'];
+    const acceptableMethods = ['_', 'get', 'post', 'put', 'delete'];
+
     if(acceptableMethods.indexOf(data.method)) {
         handlers._users[data.method](data, callback);
     } else {
@@ -31,13 +32,27 @@ handlers.users = function(data, callback) {
 handlers._users = {};
 
 handlers._users.get = function(data, callback) {
-
+    const phone = typeof(data.queryStringObject.phone) == 'string' && 
+        data.queryStringObject.phone.trim().length == 10 ? data.queryStringObject.phone : false;
+    
+    if(phone) {
+        _data.read('users', phone, function(err, data) {
+            if(!err && data) {
+                // Remove the hashed password from the user object
+                delete data.hashedPassword;
+                callback(200, data);
+            } else {
+                callback(404);
+            }
+        });
+    } else {
+        callback(400, { 'Error' : 'Missing required field' });
+    }
 };
 
 // Required data: firstName, lastName, phone, password, tosAggreement
 // Optional data: none
 handlers._users.post = function(data, callback) {
-    data.payload = JSON.parse(data.payload);
     // Validations
     const firstName = typeof(data.payload.firstName) == 'string' && 
         data.payload.firstName.trim().length > 0 ? data.payload.firstName.trim() : false;
@@ -66,7 +81,7 @@ handlers._users.post = function(data, callback) {
                     firstName,
                     lastName,
                     phone,
-                    password: hashedPassword,
+                    hashedPassword: hashedPassword,
                     tosAgreement,
                 }
                 _data.create('users', phone, userObject, function(err) {
@@ -79,7 +94,7 @@ handlers._users.post = function(data, callback) {
             }
         });
     } else {
-        callback(400, { 'Error' : 'Missing required fields', data: data.payload});
+        callback(400, { 'Error' : 'Missing required fields' });
     }
 };
 

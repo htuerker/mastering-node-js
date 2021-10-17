@@ -8,8 +8,9 @@ const url = require('url');
 const fs = require('fs');
 const StringDecoder = require('string_decoder').StringDecoder;
 
-const config = require('./config');
+const config = require('./lib/config');
 const handlers = require('./lib/handlers');
+const helpers = require('./lib/helpers');
 
 // Instantiate the HTTP server
 const httpServer = http.createServer(function(req, res) {
@@ -57,7 +58,13 @@ const unifiedServer = function(req, res) {
         const chosenHandler = typeof(router[trimmedPath]) !== 'undefined' 
             ? router[trimmedPath] : handlers.notFound;
 
-        const data = { trimmedPath, method, queryStringObject, headers, payload: buffer };
+        const data = { 
+            trimmedPath, 
+            method, 
+            queryStringObject, 
+            headers, 
+            payload: helpers.parseJsonToObject(buffer)
+        };
 
         chosenHandler(data, function(statusCode, payload) {
             statusCode = typeof(statusCode) == 'number' ? statusCode : 200;

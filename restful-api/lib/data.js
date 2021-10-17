@@ -1,3 +1,5 @@
+/* eslint-disable node/prefer-promises/fs */
+
 /*
 * Library for storing and editing data
 *
@@ -6,12 +8,18 @@
 const fs = require('fs');
 const path = require('path');
 
+const helpers = require('./helpers');
+
 const lib = {};
 lib.baseDir = path.join(__dirname, '/../.data/');
 
 lib.read = function(dir, file, callback) {
     fs.readFile(lib.baseDir + dir + '/' + file + '.json', 'utf-8',
         function(err, data) {
+            if(!err && data) {
+                const parsedData = helpers.parseJsonToObject(data);
+                callback(false, parsedData);
+            }
             callback(err, data);
         }
     );
