@@ -175,8 +175,23 @@ handlers.tokens = function(data, callback) {
 
 handlers._tokens = {};
 
+// Required data: id
+// Optional data: none
 handlers._tokens.get = function(data, callback) {
+    const id = typeof(data.queryStringObject.id) == 'string' && 
+        data.queryStringObject.id.trim().length == 20 ? data.queryStringObject.id : false;
 
+    if(id) {
+        _data.read('tokens', id, function(err, tokenData) {
+            if(!err && tokenData) {
+                callback(200, tokenData);
+            } else {
+                callback(404);
+            }
+        });
+    } else {
+        callback(400, { 'Error' : 'Missing required field' });
+    }
 }
 
 // Required data: phone, password
@@ -220,12 +235,64 @@ handlers._tokens.post = function(data, callback) {
     }
 }
 
+// Required data: id, extend:boolean
+// Optional data: none
 handlers._tokens.put = function(data, callback) {
-    
+    const id = typeof(data.payload.id) == 'string' && 
+        data.payload.id.trim().length == 20 ? data.payload.id : false;
+
+    const extend = typeof(data.payload.extend) == 'boolean' && data.payload.extend;
+
+    console.log(id, extend);
+    if(id && extend) {
+        _data.read('tokens', id, function(err, tokenData) {
+            if(!err && tokenData) {
+                if(tokenData.expires > Date.now()) {
+                    tokenData.expires = Date.now() + 1000 * 60 * 60;
+                    _data.update('tokens', id, tokenData, function(err) {
+                        if(!err) {
+                            callback(200);
+                        } else {
+                            callback(500, { 'Error' : 'Could not update the token\'s expiration' });
+                        }
+                    });
+                } else {
+                    callback(400, { 'Error' : 'The token has already expired, and cannot be extended' });
+                }
+            } else {
+                callback(400, { 'Error': 'Specified token does not exist' });
+            }
+        });
+    } else {
+        callback(400, { 'Error': 'Missing required field(s) or field(s) are invalid' });
+    }
+
 }
 
+// Required data: id
+// Optional data: none
+// TODO Add authentication & authorization
 handlers._tokens.delete = function(data, callback) {
-    
+    const id = typeof(data.queryStringObject.id) == 'string' && 
+        data.queryStringObject.id.trim().length == 20 ? data.queryStringObject.id : false;
+
+    if(id) {
+        _data.read('tokens', id, function(err) {
+            if(!err) {
+                _data.delete('tokens', id, function(err) {
+                    if(!err) {
+                        callback(200);
+                    } else {
+                        callback(500, { 'Error' : 'Could not delete the specified token' });
+                    }
+                })
+            } else {
+                callback(400, { 'Error' : 'Could not find the specified token' });
+            }
+        });
+    } else {
+        callback(400, { 'Error' : 'Missing required field' });
+    }
 }
 
 module.exports = handlers;
