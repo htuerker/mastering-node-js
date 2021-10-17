@@ -1,0 +1,25 @@
+{
+  "name": "restful-api",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "description": "",
+  "main": "index.js",
+  "engines": {
+    "node": ">8.10.0"
+  },
+  "directories": {
+    "lib": "lib",
+    "https": "https",
+    ".data": ".data"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^8.0.1",
+    "eslint-plugin-node": "^11.1.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

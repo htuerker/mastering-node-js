@@ -3,8 +3,6 @@
 *
 */
 
-const { deflateRawSync } = require("zlib");
-
 // Dependencies
 const _data = require('./data');
 const helpers = require('./helpers');
@@ -58,7 +56,7 @@ handlers._users.post = function(data, callback) {
 
     if(firstName && lastName && phone && password && tosAgreement) {
         // Make sure that the user doesn't already exist
-        _data.read('users', phone, function(err, data) {
+        _data.read('users', phone, function(err) {
             if(!err) {
                 // User already exists
                 callback(400, { 'Error' : 'A user with that phone number already exists' });
