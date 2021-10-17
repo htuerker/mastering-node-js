@@ -9,6 +9,7 @@ const fs = require('fs');
 const StringDecoder = require('string_decoder').StringDecoder;
 
 const config = require('./config');
+const handlers = require('./lib/handlers');
 
 // Instantiate the HTTP server
 const httpServer = http.createServer(function(req, res) {
@@ -71,16 +72,9 @@ const unifiedServer = function(req, res) {
     });
 }
 
-const handlers = {};
 
-handlers.ping = function(data, callback) {
-    callback(200);
-};
-
-handlers.notFound = function(data, callback) {
-    callback(404);
-};
 
 const router = {
     'ping': handlers.ping,
+    'users' : handlers.users,
 };
