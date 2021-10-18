@@ -650,7 +650,70 @@ handlers._checks.put = function (data, callback) {
 // Required data: id
 // Optional data: none
 handlers._checks.delete = function (data, callback) {
-	
+  const id =
+    typeof data.queryStringObject.id == "string" &&
+    data.queryStringObject.id.trim().length == 20
+      ? data.queryStringObject.id.trim()
+      : false;
+
+  if (id) {
+    _data.read("checks", id, function (err, checkData) {
+      if (!err && checkData) {
+        const token =
+          typeof data.headers.token == "string" ? data.headers.token : false;
+        handlers._tokens.verifyToken(
+          token,
+          checkData.userPhone,
+          function (tokenIsValid) {
+            if (tokenIsValid) {
+              _data.read(
+                "users",
+                checkData.userPhone,
+                function (err, userData) {
+                  if (!err && userData) {
+                    userData.checks = userData.checks.filter(
+                      (check) => check.id == checkData.id
+                    );
+                    _data.update(
+                      "users",
+                      userData.phone,
+                      userData,
+                      function (err) {
+                        if (!err) {
+                          _data.delete("checks", checkData.id, function (err) {
+                            if (!err) {
+                              callback(200);
+                            } else {
+                              callback(500, {
+                                Error: "Could not delete the check",
+                              });
+                            }
+                          });
+                        } else {
+                          callback(500, {
+                            Error:
+                              "Could not update the user with modified checks",
+                          });
+                        }
+                      }
+                    );
+                  } else {
+                    callback(404);
+                  }
+                }
+              );
+            } else {
+              callback(403);
+            }
+          }
+        );
+      } else {
+        callback(404);
+      }
+    });
+  } else {
+    callback(400, { Error: "Missing required field" });
+  }
 };
 
 module.exports = handlers;
