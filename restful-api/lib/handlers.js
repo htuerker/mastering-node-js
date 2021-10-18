@@ -7,7 +7,6 @@
 const _data = require("./data");
 const helpers = require("./helpers");
 const config = require("./config");
-const { check } = require("prettier");
 
 const handlers = {};
 
@@ -204,11 +203,38 @@ handlers._users.delete = function (data, callback) {
       typeof data.headers.token == "string" ? data.headers.token : false;
     handlers._tokens.verifyToken(token, phone, function (tokenIsValid) {
       if (tokenIsValid) {
-        _data.read("users", phone, function (err, data) {
-          if (!err && data) {
+        _data.read("users", phone, function (err, userData) {
+          if (!err && userData) {
             _data.delete("users", phone, function (err) {
               if (!err) {
-                callback(200);
+                const userChecks =
+                  typeof userData.checks == "object" &&
+                  userData.checks instanceof Array
+                    ? userData.checks
+                    : [];
+                const checksToDelete = userChecks.length;
+                if (checksToDelete > 0) {
+                  let checksDeleted = 0;
+                  let deletionErrors = false;
+                  userChecks.forEach((checkId) => {
+                    _data.delete("checks", checkId, function (err) {
+                      if (err) {
+                        deletionErrors = true;
+                      }
+                      checksDeleted += 1;
+                      if (checksDeleted == checksToDelete) {
+                        if (!deletionErrors) {
+                          callback(200);
+                        } else {
+                          callback(500, {
+                            Error:
+                              "Errors encountered while attempting to delete all of the user's checks. All checks may not have been deleted from the system successfuly",
+                          });
+                        }
+                      }
+                    });
+                  });
+                }
               } else {
                 callback(500, { Error: "Could not delete the specified user" });
               }
