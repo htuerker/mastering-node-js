@@ -399,8 +399,7 @@ handlers._tokens.verifyToken = function (id, phone, callback) {
 
 // Checks
 handlers.checks = function (data, callback) {
-  // const acceptableMethods = ["get", "post", "put", "delete"];
-  const acceptableMethods = ["get", "post"];
+  const acceptableMethods = ["get", "post", "put", "delete"];
 
   if (acceptableMethods.indexOf(data.method) > -1) {
     handlers._checks[data.method](data, callback);
@@ -555,6 +554,103 @@ handlers._checks.post = function (data, callback) {
   } else {
     callback(400, { Error: "Missing required inputs, or inputs are invalid" });
   }
+};
+
+// Required data: id
+// Optional data: protocol, url, method, succesCodes, timeoutSeconds (one must be sent)
+handlers._checks.put = function (data, callback) {
+  const id =
+    typeof data.queryStringObject.id == "string" &&
+    data.queryStringObject.id.trim().length == 20
+      ? data.queryStringObject.id.trim()
+      : false;
+
+  const protocol =
+    typeof data.payload.protocol == "string" &&
+    ["https", "http"].indexOf(data.payload.protocol) > -1
+      ? data.payload.protocol
+      : false;
+
+  const url =
+    typeof data.payload.url == "string" && data.payload.url.trim().length > 0
+      ? data.payload.url.trim()
+      : false;
+
+  const method =
+    typeof data.payload.method == "string" &&
+    ["get", "post", "put", "delete"].indexOf(data.payload.method) > -1
+      ? data.payload.method
+      : false;
+
+  const succesCodes =
+    typeof data.payload.succesCodes == "object" &&
+    data.payload.succesCodes instanceof Array &&
+    data.payload.succesCodes.length > 0
+      ? data.payload.succesCodes
+      : false;
+
+  const timeoutSeconds =
+    typeof data.payload.timeoutSeconds == "number" &&
+    data.payload.timeoutSeconds % 1 === 0 &&
+    data.payload.timeoutSeconds >= 1 &&
+    data.payload.timeoutSeconds <= 5
+      ? data.payload.timeoutSeconds
+      : false;
+
+  if (id) {
+    if (protocol || url || method || succesCodes || timeoutSeconds) {
+      _data.read("checks", id, function (err, checkData) {
+        if (!err && checkData) {
+          const token =
+            typeof data.headers.token == "string" ? data.headers.token : false;
+          handlers._tokens.verifyToken(
+            token,
+            checkData.userPhone,
+            function (tokenIsValid) {
+              if (tokenIsValid) {
+                if (protocol) {
+                  checkData.protocol = protocol;
+                }
+                if (url) {
+                  checkData.url = url;
+                }
+                if (method) {
+                  checkData.method = method;
+                }
+                if (succesCodes) {
+                  checkData.succesCodes = succesCodes;
+                }
+                if (timeoutSeconds) {
+                  checkData.timeoutSeconds = timeoutSeconds;
+                }
+                _data.update("checks", id, checkData, function (err) {
+                  if (!err) {
+                    callback(200);
+                  } else {
+                    callback(500, { Error: "Could not update the check" });
+                  }
+                });
+              } else {
+                callback(403);
+              }
+            }
+          );
+        } else {
+          callback(400, { Error: "CheckId did not exist" });
+        }
+      });
+    } else {
+      callback(400, { Error: "Missing fields to update" });
+    }
+  } else {
+    callback(400, { Error: "Missing required field " });
+  }
+};
+
+// Required data: id
+// Optional data: none
+handlers._checks.delete = function (data, callback) {
+	
 };
 
 module.exports = handlers;
