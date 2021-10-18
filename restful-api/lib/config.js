@@ -11,6 +11,7 @@ environments.staging = {
   httpsPort: 3001,
   envName: "staging",
   hashingSecret: "thisIsASecret",
+  maxChecksLimit: 5,
 };
 
 // Production environment
@@ -19,6 +20,7 @@ environments.production = {
   httpsPort: 5001,
   envName: "production",
   hashingSecret: "thisIsAlsoASecret",
+  maxChecksLimit: 5,
 };
 
 const currentEnvironment =

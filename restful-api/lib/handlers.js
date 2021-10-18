@@ -6,6 +6,8 @@
 // Dependencies
 const _data = require("./data");
 const helpers = require("./helpers");
+const config = require("./config");
+const { check } = require("prettier");
 
 const handlers = {};
 
@@ -155,7 +157,7 @@ handlers._users.put = function (data, callback) {
       const token =
         typeof data.headers.token == "string" ? data.headers.token : false;
       handlers._tokens.verifyToken(token, phone, function (tokenIsValid) {
-				console.log(token, tokenIsValid);
+        console.log(token, tokenIsValid);
         if (tokenIsValid) {
           // look up the user
           _data.read("users", phone, function (err, userData) {
@@ -393,6 +395,166 @@ handlers._tokens.verifyToken = function (id, phone, callback) {
       callback(false);
     }
   });
+};
+
+// Checks
+handlers.checks = function (data, callback) {
+  // const acceptableMethods = ["get", "post", "put", "delete"];
+  const acceptableMethods = ["get", "post"];
+
+  if (acceptableMethods.indexOf(data.method) > -1) {
+    handlers._checks[data.method](data, callback);
+  } else {
+    // HTTP Method not Allowed
+    callback(405);
+  }
+};
+
+handlers._checks = {};
+
+// Required data: id
+// Optional data: none
+handlers._checks.get = function (data, callback) {
+  const id =
+    typeof data.queryStringObject.id == "string" &&
+    data.queryStringObject.id.trim().length == 20
+      ? data.queryStringObject.id.trim()
+      : false;
+
+  if (id) {
+    _data.read("checks", id, function (err, checkData) {
+      if (!err && checkData) {
+        const token =
+          typeof data.headers.token == "string" ? data.headers.token : false;
+
+        handlers._tokens.verifyToken(
+          token,
+          checkData.userPhone,
+          function (tokenIsValid) {
+            if (tokenIsValid) {
+              callback(200, checkData);
+            } else {
+              callback(403, {
+                Error: "Missing required token in header, or token is invalid",
+              });
+            }
+          }
+        );
+      } else {
+        callback(404);
+      }
+    });
+  } else {
+    callback(400, { Error: "Missing required field" });
+  }
+};
+
+// Required data: protocol, url, method, succesCodes, timeoutSeconds
+// Optional data: none
+handlers._checks.post = function (data, callback) {
+  // Validate inputs
+  const protocol =
+    typeof data.payload.protocol == "string" &&
+    ["https", "http"].indexOf(data.payload.protocol) > -1
+      ? data.payload.protocol
+      : false;
+
+  const url =
+    typeof data.payload.url == "string" && data.payload.url.trim().length > 0
+      ? data.payload.url.trim()
+      : false;
+
+  const method =
+    typeof data.payload.method == "string" &&
+    ["get", "post", "put", "delete"].indexOf(data.payload.method) > -1
+      ? data.payload.method
+      : false;
+
+  const succesCodes =
+    typeof data.payload.succesCodes == "object" &&
+    data.payload.succesCodes instanceof Array &&
+    data.payload.succesCodes.length > 0
+      ? data.payload.succesCodes
+      : false;
+
+  const timeoutSeconds =
+    typeof data.payload.timeoutSeconds == "number" &&
+    data.payload.timeoutSeconds % 1 === 0 &&
+    data.payload.timeoutSeconds >= 1 &&
+    data.payload.timeoutSeconds <= 5
+      ? data.payload.timeoutSeconds
+      : false;
+
+  if (protocol && url && method && succesCodes && timeoutSeconds) {
+    const token =
+      typeof data.headers.token == "string" ? data.headers.token : false;
+
+    _data.read("tokens", token, function (err, tokenData) {
+      if (!err && tokenData) {
+        const userPhone = tokenData.phone;
+
+        _data.read("users", userPhone, function (err, userData) {
+          if (!err && userData) {
+            const userChecks =
+              typeof userData.checks == "object" &&
+              userData.checks instanceof Array
+                ? userData.checks
+                : [];
+
+            if (userChecks.length < config.maxChecksLimit) {
+              const checkId = helpers.createRandomString(20);
+              const checkObject = {
+                id: checkId,
+                userPhone,
+                protocol,
+                url,
+                method,
+                succesCodes,
+                timeoutSeconds,
+              };
+
+              _data.create("checks", checkId, checkObject, function (err) {
+                if (!err) {
+                  userData.checks = userChecks;
+                  userData.checks.push(checkId);
+                  _data.update(
+                    "users",
+                    userData.phone,
+                    userData,
+                    function (err) {
+                      if (!err) {
+                        callback(200, checkObject);
+                      } else {
+                        callback(500, {
+                          Error: "Could not update the user with the new check",
+                        });
+                      }
+                    }
+                  );
+                } else {
+                  callback(500, { Error: "Could not create the new check" });
+                }
+              });
+            } else {
+              callback(400, {
+                Error:
+                  "The user already has the maximum number of checks(" +
+                  config.maxChecksLimit +
+                  ")",
+              });
+            }
+          } else {
+            callback(403);
+          }
+        });
+      } else {
+        // HTTP 403 Not Authorized
+        callback(403);
+      }
+    });
+  } else {
+    callback(400, { Error: "Missing required inputs, or inputs are invalid" });
+  }
 };
 
 module.exports = handlers;
